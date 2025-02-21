@@ -1,21 +1,22 @@
-use std::env;
+use clap::Parser;
+
+#[derive(Parser)]
+#[command(version = "1.0", about = "Remove a given substring from a string")]
+
+struct Cli {
+    input: String,
+    remove: String,
+}
+
 
 fn remove_string(input: &str, target: &str) -> String {
     input.replace(target, "")
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let args = Cli::parse();
 
-    if args.len() != 3 {
-        eprintln!("Usage: str_cleaner <input_string> <substring_to_remove>");
-        std::process::exit(1);
-    }
-
-    let input_string = &args[1];
-    let substring_to_remove = &args[2];
-
-    let result = remove_string(input_string, substring_to_remove);
+    let result = remove_string(&args.input, &args.remove);
     println!("{}", result);
 }
 
