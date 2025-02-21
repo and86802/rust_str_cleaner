@@ -1,4 +1,4 @@
-use clap::{Parser, ArgAction, Subcommand};
+use clap::{Parser, ArgAction, Subcommand, ValueEnum};
 
 #[derive(Parser)]
 #[command(version = "1.0", about = "A simple string manipulation tool")]
@@ -21,6 +21,9 @@ enum Commands {
         // Case-insensitive flag
         #[arg(short, long, action = ArgAction::SetTrue)]
         case_insensitive: bool,
+
+        #[arg(short, long, default_value = "text")]
+        format: OutputFormat,
     },
 
     // Replace a substring with another string
@@ -37,7 +40,16 @@ enum Commands {
         // Case-insensitive flag
         #[arg(short, long, action = ArgAction::SetTrue)]
         case_insensitive: bool,
+
+        #[arg(short, long, default_value = "text")]
+        format: OutputFormat,
     }
+}
+
+#[derive(ValueEnum, Clone, Debug)]
+enum OutputFormat {
+    Text,
+    Json,
 }
 
 fn remove_string(input: &str, target: &str) -> String {
@@ -52,21 +64,29 @@ fn main() {
     let args = Cli::parse();
 
     match args.command {
-        Commands::Remove {input, remove, case_insensitive} => {
+        Commands::Remove {input, remove, case_insensitive, format} => {
             let result = if case_insensitive {
                 remove_string(&input.to_lowercase(), &remove.to_lowercase())
             } else {
                 remove_string(&input, &remove)
             };
-            println!("{}", result);
+            
+            match format {
+                OutputFormat::Text => println!("{}", result),
+                OutputFormat::Json => println!(r#"{{"result": "{}"}}"#, result),
+            }
         }
-        Commands::Replace {input, replace, with, case_insensitive} => {
+        Commands::Replace {input, replace, with, case_insensitive, format} => {
             let result = if case_insensitive {
                 replace_string(&input.to_lowercase(), &replace.to_lowercase(), &with)
             } else {
                 replace_string(&input, &replace, &with)
             };
-            println!("{}", result);
+            
+            match format {
+                OutputFormat::Text => println!("{}", result),
+                OutputFormat::Json => println!(r#"{{"result": "{}"}}"#, result),
+            }
         }
     }
 }
@@ -84,8 +104,8 @@ mod tests {
 
     #[test]
     fn test_case_insensitive_removal() {
-        let args = Cli::try_parse_from(["prog", "remove", "Hello World", "WORLD", "--case-insensitive"]).unwrap();
-        if let Commands::Remove { input, remove, case_insensitive } = args.command {
+        let args = Cli::try_parse_from(["prog", "remove", "Hello World", "WORLD", "--case-insensitive", ]).unwrap();
+        if let Commands::Remove { input, remove, case_insensitive, .. } = args.command {
             let result = if case_insensitive {
                 remove_string(&input.to_lowercase(), &remove.to_lowercase())
             } else {
@@ -99,8 +119,8 @@ mod tests {
 
     #[test]
     fn test_case_insensitive_replacemant() {
-        let args = Cli::try_parse_from(["prog", "replace", "Hello World", "WORLD", "disneyland", "--case-insensitive"]).unwrap();
-        if let Commands::Replace { input, replace, with, case_insensitive } = args.command {
+        let args = Cli::try_parse_from(["prog", "replace", "Hello World", "WORLD", "disneyland", "--case-insensitive", ]).unwrap();
+        if let Commands::Replace { input, replace, with, case_insensitive, .. } = args.command {
             let result = if case_insensitive {
                 replace_string(&input.to_lowercase(), &replace.to_lowercase(), &with)
             } else {
@@ -109,6 +129,24 @@ mod tests {
             assert_eq!(result, "hello disneyland"); 
         } else {
             panic!("Expected Replace command");
+        }
+    }
+
+    #[test]
+    fn test_json_output_for_remove() {
+        let args = Cli::try_parse_from(["prog", "remove", "Hello World", "World", "--format", "json"]).unwrap();
+        if let Commands::Remove { input, remove, case_insensitive, format, .. } = args.command {
+            let result = if case_insensitive {
+                remove_string(&input.to_lowercase(), &remove.to_lowercase())
+            } else {
+                remove_string(&input, &remove)
+            };
+
+            let expected_output = r#"{"result": "Hello "}"#;
+            assert_eq!(format!("{:?}", format), "Json");
+            assert_eq!(expected_output, format!(r#"{{"result": "{}"}}"#, result));
+        } else {
+            panic!("Expected Remove command");
         }
     }
 }
